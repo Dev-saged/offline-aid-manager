@@ -1,0 +1,1180 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="description" content="نظام إدارة كشوفات المستفيدين: رفع، بحث، أرشفة وتصدير — يعمل بالكامل بدون إنترنت بعد أول تشغيل.">
+    <meta name="theme-color" content="#0E5C73">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="إدارة المستفيدين">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="icons/icon-192.png">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+    <title>نظام إدارة المستفيدين | الإصدار 5</title>
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg-body: #F2F5F4;
+            --bg-card: #ffffff;
+            --primary: #0E5C73;
+            --primary-deep: #0A4457;
+            --primary-light: #E3F0F2;
+            --text-main: #17313A;
+            --text-light: #6B8790;
+            --accent: #0EA5A8;
+            --archive: #5B3A82;
+            --archive-light: #F0EBF7;
+            --warning: #A9660F;
+            --warning-light: #FBF1E1;
+            --danger: #B3401F;
+            --danger-light: #FBEAE4;
+            --date-bg: #FBF3E6;
+            --date-text: #9C5B14;
+            --stub: #C9862B;
+            --radius-lg: 18px;
+            --radius-md: 13px;
+            --font-data: 'Tajawal', sans-serif;
+        }
+
+        /* --- الوضع الليلي: إعادة تعريف نفس متغيرات الألوان فقط، فتتوارث كل عناصر الواجهة القيم الجديدة تلقائيًا --- */
+        html.dark-mode {
+            --bg-body: #0F1A1E;
+            --bg-card: #17262B;
+            --primary: #3FC6D2;
+            --primary-deep: #2B98A3;
+            --primary-light: #1E3438;
+            --text-main: #E7F1F2;
+            --text-light: #8FA6AC;
+            --accent: #2FD6D0;
+            --archive: #C3A6EF;
+            --archive-light: #2A2140;
+            --warning: #F0B060;
+            --warning-light: #3A2E1A;
+            --danger: #F08262;
+            --danger-light: #3A2018;
+            --date-bg: #2A2015;
+            --date-text: #F0C888;
+            --stub: #F0C888;
+        }
+        html.dark-mode .card,
+        html.dark-mode .archive-item { border-color: rgba(255,255,255,0.08); }
+        html.dark-mode .card-header,
+        html.dark-mode .modal-header,
+        html.dark-mode .toggle-msg-btn { border-color: rgba(255,255,255,0.1); }
+        html.dark-mode .full-message-box { background-color: #12191C; border-color: rgba(255,255,255,0.08); }
+        html.dark-mode .loader { border-color: #223035; border-top-color: var(--primary); }
+        html.dark-mode .msg-action-btn { background-color: #101B1F; border-color: rgba(255,255,255,0.08); }
+
+        * {
+            box-sizing: border-box;
+            outline: none;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        ::-webkit-scrollbar { display: none; }
+
+        body {
+            font-family: 'Tajawal', sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            margin: 0;
+            padding: 0;
+            padding-bottom: 20px;
+            overscroll-behavior-y: none;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        header {
+            background-color: var(--bg-card);
+            padding: 22px 20px 18px;
+            text-align: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 16px rgba(14, 92, 115, 0.08);
+            border-bottom-left-radius: var(--radius-lg);
+            border-bottom-right-radius: var(--radius-lg);
+            border-top: 3px solid var(--primary);
+        }
+
+        h1 { margin: 0; font-size: 1.25rem; color: var(--primary-deep); font-weight: 800; letter-spacing: -0.2px; }
+        .stats { font-size: 0.88rem; color: var(--text-light); margin-top: 6px; font-weight: 500; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .conn-dot { width: 8px; height: 8px; border-radius: 50%; background: #2E9E6C; display: inline-block; box-shadow: 0 0 0 3px rgba(46,158,108,0.15); transition: background 0.3s; }
+        .conn-dot.offline { background: #B3401F; box-shadow: 0 0 0 3px rgba(179,64,31,0.15); }
+
+        .archive-banner {
+            background: linear-gradient(135deg, var(--archive), #3E2759);
+            color: white;
+            padding: 12px 20px;
+            text-align: center;
+            font-weight: bold;
+            border-radius: 15px;
+            margin: 15px;
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 4px 10px rgba(142, 36, 170, 0.3);
+            animation: slideDown 0.3s ease-out;
+        }
+        .exit-archive-btn {
+            background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.4);
+            padding: 6px 12px; border-radius: 8px; cursor: pointer; font-family: 'Tajawal', sans-serif; font-weight: 700; transition: 0.2s;
+        }
+        .exit-archive-btn:active { background: rgba(255,255,255,0.4); }
+
+        .log-area { display: none; }
+
+        .controls { padding: 16px 15px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .btn {
+            border: none; padding: 16px; border-radius: var(--radius-md); font-family: 'Tajawal', sans-serif; font-weight: 700; font-size: 0.95rem;
+            cursor: pointer; box-shadow: 0 3px 8px rgba(23, 49, 58, 0.06); display: flex; align-items: center; justify-content: center; gap: 8px; transition: transform 0.12s, box-shadow 0.12s;
+        }
+        .btn:active { transform: scale(0.96); box-shadow: 0 1px 3px rgba(23, 49, 58, 0.08); }
+        .btn-upload { background: linear-gradient(135deg, var(--accent) 0%, var(--primary-deep) 100%); color: white; grid-column: span 2; box-shadow: 0 6px 14px rgba(10, 68, 87, 0.25); }
+        .btn-export { background-color: var(--bg-card); color: var(--primary); border: 2px solid var(--primary-light); }
+        .btn-archive { background-color: var(--warning-light); color: var(--warning); border: 1px solid #F0DCB4; }
+        .btn-view-archive { background-color: var(--archive-light); color: var(--archive); }
+        .btn-clear { background-color: var(--danger-light); color: var(--danger); }
+        .btn-settings { background-color: var(--bg-card); color: var(--text-main); border: 2px solid #E4E9E8; }
+
+        .search-box { margin: 4px 15px 18px 15px; position: relative; }
+        input[type="number"] {
+            user-select: auto; -webkit-user-select: auto; width: 100%; padding: 18px; padding-right: 50px; border-radius: var(--radius-lg);
+            border: 2px solid transparent; background-color: var(--bg-card); font-family: var(--font-data); font-size: 1.3rem; letter-spacing: 0; font-variant-numeric: tabular-nums;
+            box-shadow: 0 6px 22px rgba(14, 92, 115, 0.12); color: var(--primary-deep); font-weight: 700;
+        }
+        input[type="number"]:focus { border-color: var(--accent); }
+        input[type="number"]::placeholder { font-family: 'Tajawal', sans-serif; font-weight: 500; font-size: 1rem; letter-spacing: 0; color: var(--text-light); }
+        .search-icon { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); font-size: 1.4rem; color: var(--primary); opacity: 0.7; }
+
+        .results { padding: 0 15px; min-height: 200px; }
+
+        .card {
+            background-color: var(--bg-card); border-radius: var(--radius-lg); padding: 20px; margin-bottom: 15px;
+            box-shadow: 0 6px 18px rgba(23, 49, 58, 0.05); border: 1px solid #EEF2F1; position: relative; overflow: hidden; animation: slideUp 0.3s ease-out;
+        }
+        .card::before { content: ''; position: absolute; right: 0; top: 0; bottom: 0; width: 5px; background: linear-gradient(180deg, var(--accent), var(--primary-deep)); }
+        .card-header { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px dashed #E4E9E8; }
+        .card-topline { display: flex; justify-content: space-between; align-items: center; }
+        .card-serial { color: var(--text-light); font-weight: 700; font-size: 0.85rem; font-family: var(--font-data); font-variant-numeric: tabular-nums; }
+        .card-name { font-size: 1.05rem; font-weight: 800; color: var(--text-main); line-height: 1.6; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+        .card-name.expanded { -webkit-line-clamp: unset; }
+        .toggle-name { display: block; margin-top: 6px; background: none; border: none; padding: 0; color: var(--primary); font-family: 'Tajawal', sans-serif; font-weight: 700; font-size: 0.82rem; cursor: pointer; }
+        .card-id { background-color: var(--primary-light); color: var(--primary-deep); padding: 5px 10px; border-radius: 20px; font-weight: 700; font-size: 0.95rem; font-family: var(--font-data); font-variant-numeric: tabular-nums; display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
+
+        .info-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.95rem; align-items: center; }
+        .label { color: var(--text-light); }
+        .value { font-weight: 600; color: #34535D; display: flex; align-items: center; gap: 5px; }
+        .phone { color: var(--accent); font-family: var(--font-data); font-variant-numeric: tabular-nums; direction: ltr;}
+
+        .copy-btn { background: transparent; border: none; padding: 4px; display: flex; align-items: center; justify-content: center; border-radius: 6px; color: var(--primary); cursor: pointer; transition: background 0.2s; }
+        .copy-btn:active { background: #dcedc8; color: #33691e; }
+        .copy-btn svg { width: 18px; height: 18px; fill: currentColor; }
+
+        .card-actions-row { display: flex; gap: 10px; margin: 10px 0; }
+        .icon-action-btn {
+            flex: 1; background-color: var(--primary-light); color: var(--primary-deep); border: none;
+            border-radius: 10px; padding: 9px; font-family: 'Tajawal', sans-serif; font-weight: 700; font-size: 0.85rem; cursor: pointer;
+        }
+        .icon-action-btn.danger { background-color: var(--danger-light); color: var(--danger); }
+        .icon-action-btn:active { opacity: 0.75; }
+
+        .appointment-box {
+            background-color: var(--date-bg);
+            border-radius: var(--radius-md);
+            padding: 12px 16px 10px;
+            margin-top: 12px;
+            border: 1px dashed rgba(156, 91, 20, 0.3);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+        .appointment-box::before, .appointment-box::after {
+            content: ''; position: absolute; width: 14px; height: 14px; background: var(--bg-card);
+            border-radius: 50%; top: 50%; transform: translateY(-50%);
+        }
+        .appointment-box::before { left: -8px; }
+        .appointment-box::after { right: -8px; }
+        .appt-eyebrow { font-size: 0.7rem; color: var(--stub); font-weight: 700; letter-spacing: 0.5px; margin-bottom: 6px; }
+        .appt-row { display: flex; justify-content: space-between; align-items: center; font-size: 0.88rem; padding: 6px 0; }
+        .appt-row + .appt-row { border-top: 1px dashed rgba(156, 91, 20, 0.25); }
+        .appt-label { color: var(--text-main); font-weight: 700; display: flex; align-items: center; gap: 6px; }
+        .appt-value { color: var(--date-text); font-weight: 800; font-family: var(--font-data); font-variant-numeric: tabular-nums; direction: ltr; }
+
+        .msg-actions-row { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+        .msg-action-btn {
+            background: var(--bg-body); border: 1px solid #E4E9E8; border-radius: 10px;
+            padding: 8px 10px; font-family: 'Tajawal', sans-serif; font-weight: 700; font-size: 0.8rem;
+            color: var(--primary); cursor: pointer; flex: 1 1 auto; min-width: 100px; text-align: center;
+        }
+        .msg-action-btn.share { color: #1D9A57; }
+        .msg-action-btn.danger { color: var(--danger); }
+
+        .toggle-msg-btn {
+            background: none; border: none; padding: 12px 0 0 0; margin-top: 12px;
+            color: var(--primary); font-family: 'Tajawal', sans-serif; font-weight: 700; font-size: 0.88rem;
+            cursor: pointer; display: flex; align-items: center; justify-content: center; width: 100%;
+            border-top: 1px dashed #E4E9E8; transition: opacity 0.2s;
+        }
+        .toggle-msg-btn:active { opacity: 0.7; }
+        .full-message-box {
+            background-color: #F8FAFA; border-radius: 10px; padding: 12px; margin-top: 10px;
+            font-size: 0.9rem; color: #34535D; line-height: 1.6; display: none; border: 1px solid #E4E9E8;
+            white-space: pre-wrap;
+        }
+
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(17, 33, 39, 0.5); backdrop-filter: blur(4px); z-index: 1000; display: none; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s ease; }
+        .modal-overlay.show { display: flex; opacity: 1; }
+        .modal-content { background: var(--bg-body); width: 90%; max-height: 80vh; border-radius: 24px; padding: 20px; overflow-y: auto; box-shadow: 0 20px 45px rgba(10, 30, 38, 0.25); transform: translateY(30px) scale(0.95); transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .modal-overlay.show .modal-content { transform: translateY(0) scale(1); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #E4E9E8; padding-bottom: 15px; margin-bottom: 15px; }
+        .modal-title { color: var(--archive); font-weight: 800; font-size: 1.15rem; margin: 0; display: flex; align-items: center; gap: 8px;}
+        .close-btn { background: var(--danger-light); color: var(--danger); border: none; width: 35px; height: 35px; border-radius: 50%; font-weight: bold; font-size: 1.2rem; cursor: pointer; display:flex; align-items:center; justify-content:center; }
+        .archive-grid { display: flex; flex-direction: column; gap: 12px; }
+        .archive-item { background: var(--bg-card); border-radius: var(--radius-lg); padding: 15px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 3px 10px rgba(23,49,58,0.05); border: 1px solid #EEF2F1; }
+        .archive-info h3 { margin: 0 0 5px 0; color: var(--text-main); font-size: 1.05rem; }
+        .archive-info p { margin: 0; color: var(--text-light); font-size: 0.88rem; }
+        .archive-actions { display: flex; flex-direction: column; gap: 8px; }
+        .archive-actions button { border: none; padding: 7px 15px; border-radius: 8px; font-weight: bold; font-family: 'Tajawal'; cursor: pointer; }
+        .btn-view-arc { background: var(--archive-light); color: var(--archive); }
+        .btn-delete-arc { background: var(--danger-light); color: var(--danger); }
+
+        .switch { position: relative; display: inline-block; width: 46px; height: 26px; direction: ltr; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; inset: 0; background-color: #ccc; transition: .3s; border-radius: 26px; }
+        .slider::before { position: absolute; content: ""; height: 20px; width: 20px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; }
+        .switch input:checked + .slider { background-color: var(--accent); }
+        .switch input:checked + .slider::before { transform: translateX(20px); }
+
+        #toastMsg { visibility: hidden; min-width: 200px; background-color: rgba(20, 41, 48, 0.92); color: #fff; text-align: center; border-radius: 25px; padding: 10px 18px; position: fixed; z-index: 1001; left: 50%; bottom: 30px; transform: translateX(-50%); font-family: 'Tajawal', sans-serif; font-size: 0.9rem; opacity: 0; transition: opacity 0.3s, bottom 0.3s; }
+        #toastMsg.show { visibility: visible; opacity: 1; bottom: 50px; }
+        .empty-state { text-align: center; padding: 40px; color: var(--text-light); }
+        .loader { border: 4px solid #E3ECEB; border-top: 4px solid var(--primary); border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 10px auto; display: none; }
+
+        .app-footer { margin-top: 40px; padding: 25px 15px; text-align: center; background-color: var(--bg-card); border-top-left-radius: 28px; border-top-right-radius: 28px; box-shadow: 0 -5px 20px rgba(23,49,58,0.04); }
+        .copyright { font-size: 0.95rem; color: var(--text-light); margin-bottom: 15px; }
+        .copyright strong { color: var(--primary-deep); font-size: 1.1rem; font-weight: 800; }
+        .whatsapp-btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; background: linear-gradient(135deg, #25D366, #128C7E); color: white; text-decoration: none; padding: 14px 28px; border-radius: 50px; font-weight: bold; font-size: 1.05rem; box-shadow: 0 8px 15px rgba(37, 211, 102, 0.3); transition: all 0.3s ease; }
+        .whatsapp-btn:active { transform: scale(0.94); box-shadow: 0 4px 10px rgba(37, 211, 102, 0.2); }
+        .whatsapp-icon { width: 24px; height: 24px; fill: currentColor; }
+
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-15px); } to { opacity: 1; transform: translateY(0); } }
+        #fileInput { display: none; }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>📋 نظام إدارة المستفيدين</h1>
+    <div class="stats">
+        <span class="conn-dot" id="connDot"></span>
+        <span id="stats">جاري التحميل...</span>
+    </div>
+    <div id="logArea" class="log-area"></div>
+</header>
+
+<div id="archiveBanner" class="archive-banner">
+    <span>🗂️ وضع الأرشيف: <span id="archiveNameDisplay"></span></span>
+    <button class="exit-archive-btn" onclick="exitArchiveMode()">العودة للنظام</button>
+</div>
+
+<div class="controls" id="mainControls">
+    <button class="btn btn-upload" onclick="document.getElementById('fileInput').click()">
+        <span>☁️ رفع كشف إكسل (دمج)</span>
+    </button>
+    <button class="btn btn-export" onclick="exportData()">
+        <span>📥 تصدير الكشف</span>
+    </button>
+    <button class="btn btn-archive" onclick="archiveCurrentData()">
+        <span>📦 أرشفة الكشف الحالي</span>
+    </button>
+    <button class="btn btn-view-archive" onclick="openArchiveModal()">
+        <span>🗂️ سجل الأرشيف</span>
+    </button>
+    <button class="btn btn-clear" onclick="clearData()">
+        <span>🗑️ تصفير</span>
+    </button>
+    <button class="btn btn-settings" onclick="openSettingsModal()" style="grid-column: span 2;">
+        <span>🛠️ أدوات وإعدادات (نسخ احتياطي / وضع ليلي)</span>
+    </button>
+</div>
+
+<div id="loader" class="loader"></div>
+<input type="file" id="fileInput" accept=".xlsx, .xls, .csv" onchange="processFile(this)">
+
+<div class="search-box">
+    <span class="search-icon">🔍</span>
+    <input type="number" id="searchInput" placeholder="اكتب الهوية للبحث..." oninput="doSearch(this.value)">
+</div>
+
+<div id="results" class="results">
+    <div class="empty-state">
+        <p>النظام جاهز، بانتظار إدخال البيانات.</p>
+    </div>
+</div>
+
+<div class="app-footer">
+    <div class="copyright">
+        تم التطوير والبرمجة بواسطة<br>
+        <strong>المهندس / ساجد العبادلة</strong> &copy; 2026
+    </div>
+    <a href="https://wa.me/972597857250?text=أهلأ%20بلمهندس%20ساجد" target="_blank" class="whatsapp-btn">
+        <svg class="whatsapp-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
+        تواصل مع المهندس ساجد
+    </a>
+</div>
+
+<div id="toastMsg">تم النسخ بنجاح</div>
+
+<div id="archiveModal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">🗂️ السجلات المؤرشفة</h2>
+            <button class="close-btn" onclick="closeArchiveModal()">×</button>
+        </div>
+        <div id="archiveList" class="archive-grid"></div>
+    </div>
+</div>
+
+<div id="editModal" class="modal-overlay">
+    <div class="modal-content" style="width:90%;max-width:420px;">
+        <div class="modal-header">
+            <h2 class="modal-title">✏️ تعديل بيانات المستفيد</h2>
+            <button class="close-btn" onclick="closeEditModal()">×</button>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:14px;">
+            <div>
+                <label style="font-size:0.85rem;color:var(--text-light);display:block;margin-bottom:6px;">الاسم</label>
+                <input type="text" id="editNameInput" style="width:100%;padding:12px;border-radius:10px;border:2px solid var(--primary-light);font-family:'Tajawal',sans-serif;font-size:0.95rem;background-color:var(--bg-card);color:var(--text-main);">
+            </div>
+            <div>
+                <label style="font-size:0.85rem;color:var(--text-light);display:block;margin-bottom:6px;">رقم الجوال</label>
+                <input type="text" id="editPhoneInput" style="width:100%;padding:12px;border-radius:10px;border:2px solid var(--primary-light);font-family:var(--font-data);font-size:0.95rem;direction:ltr;text-align:right;background-color:var(--bg-card);color:var(--text-main);">
+            </div>
+            <input type="hidden" id="editIdHidden">
+            <button class="btn btn-upload" style="grid-column:auto;" onclick="saveEditedBeneficiary()">💾 حفظ التعديلات</button>
+        </div>
+    </div>
+</div>
+
+<div id="settingsModal" class="modal-overlay">
+    <div class="modal-content" style="width:90%;max-width:420px;">
+        <div class="modal-header">
+            <h2 class="modal-title">🛠️ أدوات وإعدادات</h2>
+            <button class="close-btn" onclick="closeSettingsModal()">×</button>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:16px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span style="font-weight:700;">🌙 الوضع الليلي</span>
+                <label class="switch">
+                    <input type="checkbox" id="darkModeToggle" onchange="onDarkModeToggleChange(this)">
+                    <span class="slider"></span>
+                </label>
+            </div>
+            <hr style="border:none;border-top:1px dashed #E4E9E8;width:100%;">
+            <button class="btn btn-export" style="width:100%;" onclick="exportFullBackup()">💾 نسخة احتياطية كاملة (تصدير)</button>
+            <button class="btn btn-view-archive" style="width:100%;" onclick="document.getElementById('backupFileInput').click()">📂 استيراد نسخة احتياطية</button>
+            <input type="file" id="backupFileInput" accept=".json" style="display:none;" onchange="if(this.files[0]) importFullBackup(this.files[0]);">
+            <p style="font-size:0.78rem;color:var(--text-light);line-height:1.6;margin:0;">النسخة الاحتياطية تشمل كل البيانات النشطة وكل الأرشيف الشهري في ملف JSON واحد، لاستعادتها لاحقًا أو نقلها لجهاز آخر.</p>
+            <p style="font-size:0.7rem;color:var(--text-light);text-align:center;margin:0;">الإصدار v5.2.0</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    const APP_VERSION = '5.2.0';
+    const DB_NAME = 'SmartSortedDB_v5_Enhanced';
+    const ARCHIVE_DB_NAME = 'BeneficiaryArchivesDB_v5';
+    const OLD_ARCHIVE_DB_NAME = 'AneraArchivesDB';
+    const DB_VERSION = 2;
+    const STORE_NAME = 'beneficiaries';
+    const SETTINGS_STORE = 'settings';
+
+    let db, archiveDb, memoryCache = [];
+    let isArchiveMode = false;
+
+    window.onload = () => { openDatabase(); openArchiveDatabase(); registerServiceWorker(); watchConnection(); };
+
+    // --- أداة أمان: تحويل أي نص قد يحتوي HTML/سكربت إلى نص آمن قبل إدراجه في الصفحة (يمنع حقن DOM من بيانات إكسل أو أسماء أرشيف) ---
+    function escapeHtml(str) {
+        if (str === null || str === undefined) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    async function migrateOldArchiveDbIfNeeded() {
+        try {
+            if (!indexedDB.databases) return;
+            const list = await indexedDB.databases();
+            if (!list.some(d => d.name === OLD_ARCHIVE_DB_NAME)) return;
+            const oldReq = indexedDB.open(OLD_ARCHIVE_DB_NAME);
+            oldReq.onsuccess = (e) => {
+                const oldDb = e.target.result;
+                if (!oldDb.objectStoreNames.contains('archives')) { oldDb.close(); return; }
+                const getAllReq = oldDb.transaction(['archives'], 'readonly').objectStore('archives').getAll();
+                getAllReq.onsuccess = () => {
+                    const records = getAllReq.result || [];
+                    if (records.length && archiveDb) {
+                        const store = archiveDb.transaction(['archives'], 'readwrite').objectStore('archives');
+                        records.forEach(r => store.put(r));
+                    }
+                    oldDb.close();
+                };
+            };
+        } catch (e) { /* الترحيل اختياري، أي خطأ هنا لا يوقف عمل النظام */ }
+    }
+
+    function registerServiceWorker() {
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('service-worker.js').catch(() => {});
+        }
+    }
+
+    function watchConnection() {
+        const dot = document.getElementById('connDot');
+        const update = () => { if (dot) dot.classList.toggle('offline', !navigator.onLine); };
+        window.addEventListener('online', update);
+        window.addEventListener('offline', update);
+        update();
+    }
+
+    // --- إعدادات صغيرة (الوضع الليلي وغيره) تُحفظ داخل قاعدة البيانات نفسها عبر متجر settings، بدون أي استخدام لـ localStorage ---
+    function getSetting(key, callback) {
+        if (!db) { callback(null); return; }
+        try {
+            const tx = db.transaction([SETTINGS_STORE], 'readonly');
+            const req = tx.objectStore(SETTINGS_STORE).get(key);
+            req.onsuccess = () => callback(req.result ? req.result.value : null);
+            req.onerror = () => callback(null);
+        } catch (e) { callback(null); }
+    }
+    function setSetting(key, value) {
+        if (!db) return;
+        try {
+            const tx = db.transaction([SETTINGS_STORE], 'readwrite');
+            tx.objectStore(SETTINGS_STORE).put({ key: key, value: value });
+        } catch (e) { /* تجاهل */ }
+    }
+
+    function applyDarkMode(enabled) {
+        document.documentElement.classList.toggle('dark-mode', enabled);
+        const meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute('content', enabled ? '#0F1A1E' : '#0E5C73');
+    }
+
+    function openDatabase() {
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+        request.onerror = (e) => alert("خطأ في فتح قاعدة البيانات");
+        request.onupgradeneeded = (e) => {
+            const d = e.target.result;
+            if (!d.objectStoreNames.contains(STORE_NAME)) { d.createObjectStore(STORE_NAME, { keyPath: "id" }); }
+            if (!d.objectStoreNames.contains(SETTINGS_STORE)) { d.createObjectStore(SETTINGS_STORE, { keyPath: "key" }); }
+        };
+        request.onsuccess = (e) => {
+            db = e.target.result;
+            loadDataToMemory();
+            getSetting('darkMode', (val) => {
+                let enabled;
+                if (val === null || val === undefined) {
+                    enabled = !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+                } else {
+                    enabled = !!val;
+                }
+                const toggle = document.getElementById('darkModeToggle');
+                if (toggle) toggle.checked = enabled;
+                applyDarkMode(enabled);
+            });
+        };
+    }
+
+    function openArchiveDatabase() {
+        const req = indexedDB.open(ARCHIVE_DB_NAME, 1);
+        req.onupgradeneeded = (e) => {
+            let d = e.target.result;
+            if(!d.objectStoreNames.contains('archives')) { d.createObjectStore('archives', { keyPath: 'id' }); }
+        };
+        req.onsuccess = (e) => { archiveDb = e.target.result; migrateOldArchiveDbIfNeeded(); };
+    }
+
+    function loadDataToMemory() {
+        showLoader(true);
+        const tx = db.transaction([STORE_NAME], "readonly");
+        const store = tx.objectStore(STORE_NAME);
+        const req = store.getAll();
+        req.onsuccess = (e) => {
+            let results = e.target.result || [];
+            results.forEach(item => {
+                if (!item.messages) {
+                    item.messages = [{ msg: item.msg, emp: item.emp, code: item.code, origNum: item.origNum }];
+                }
+            });
+            memoryCache = results;
+            updateStats();
+            showLoader(false);
+        };
+    }
+
+    function archiveCurrentData() {
+        if (memoryCache.length === 0) { alert("⚠️ لا يوجد بيانات في النظام لأرشفتها!"); return; }
+        const now = new Date();
+        const monthNames = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
+        const defaultName = `شهر ${monthNames[now.getMonth()]} ${now.getFullYear()}`;
+
+        const archiveName = prompt("📦 أدخل اسماً لهذا الأرشيف ليتم حفظه:", defaultName);
+        if (!archiveName) return;
+
+        showLoader(true);
+        const archiveRecord = { id: Date.now().toString(), name: archiveName, date: new Date().toISOString(), count: memoryCache.length, data: [...memoryCache] };
+
+        const tx = archiveDb.transaction(['archives'], 'readwrite');
+        tx.objectStore('archives').put(archiveRecord);
+        tx.oncomplete = () => {
+            const mainTx = db.transaction([STORE_NAME], "readwrite");
+            mainTx.objectStore(STORE_NAME).clear();
+            mainTx.oncomplete = () => { memoryCache = []; updateStats(); document.getElementById('results').innerHTML = '<div class="empty-state"><p>تمت الأرشفة وتصفير النظام بنجاح لاستقبال كشوفات جديدة.</p></div>'; showLoader(false); showToastMsg("✅ تمت أرشفة الكشف بنجاح!"); };
+        };
+        tx.onerror = () => { showLoader(false); alert("❌ حدث خطأ أثناء الأرشفة."); };
+    }
+
+    function openArchiveModal() {
+        const tx = archiveDb.transaction(['archives'], 'readonly');
+        const req = tx.objectStore('archives').getAll();
+        req.onsuccess = (e) => {
+            const archives = e.target.result || [];
+            archives.sort((a,b) => new Date(b.date) - new Date(a.date));
+            renderArchiveList(archives);
+            document.getElementById('archiveModal').classList.add('show');
+        };
+    }
+
+    function closeArchiveModal() { document.getElementById('archiveModal').classList.remove('show'); }
+
+    function renderArchiveList(archives) {
+        const container = document.getElementById('archiveList');
+        if (archives.length === 0) { container.innerHTML = '<div class="empty-state">لا يوجد سجلات مؤرشفة بعد.</div>'; return; }
+        container.innerHTML = archives.map(arc => `
+            <div class="archive-item">
+                <div class="archive-info">
+                    <h3>${escapeHtml(arc.name)}</h3>
+                    <p>عدد المستفيدين: <strong style="color:var(--primary);">${arc.count}</strong></p>
+                    <p style="font-size:0.75rem; color:#999; margin-top:3px;">${escapeHtml(new Date(arc.date).toLocaleDateString('ar-EG'))}</p>
+                </div>
+                <div class="archive-actions">
+                    <button class="btn-view-arc" data-action="view-archive" data-id="${escapeHtml(arc.id)}" data-name="${escapeHtml(arc.name)}">👁️ عرض الأرشيف</button>
+                    <button class="btn-delete-arc" data-action="delete-archive" data-id="${escapeHtml(arc.id)}" data-name="${escapeHtml(arc.name)}">🗑️ حذف</button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    document.getElementById('archiveList').addEventListener('click', function(e) {
+        const btn = e.target.closest('[data-action]');
+        if (!btn) return;
+        const action = btn.dataset.action;
+        if (action === 'view-archive') loadArchive(btn.dataset.id, btn.dataset.name);
+        else if (action === 'delete-archive') deleteArchive(btn.dataset.id, btn.dataset.name);
+    });
+
+    function deleteArchive(id, name) {
+        if(confirm(`⚠️ تحذير: هل أنت متأكد من حذف أرشيف "${name}" نهائياً؟`)) {
+            const tx = archiveDb.transaction(['archives'], 'readwrite');
+            tx.objectStore('archives').delete(id);
+            tx.oncomplete = () => { showToastMsg("🗑️ تم حذف الأرشيف"); openArchiveModal(); };
+        }
+    }
+
+    function loadArchive(id, name) {
+        const tx = archiveDb.transaction(['archives'], 'readonly');
+        const req = tx.objectStore('archives').get(id);
+        req.onsuccess = (e) => {
+            const record = e.target.result;
+            if(record) {
+                isArchiveMode = true; memoryCache = record.data;
+                closeArchiveModal();
+                document.getElementById('archiveNameDisplay').innerText = name;
+                document.getElementById('archiveBanner').style.display = 'flex';
+                document.querySelector('.btn-upload').style.display = 'none';
+                document.querySelector('.btn-archive').style.display = 'none';
+                document.querySelector('.btn-view-archive').style.display = 'none';
+                document.querySelector('.btn-clear').style.display = 'none';
+                document.querySelector('.btn-export').style.gridColumn = 'span 2';
+                updateStats();
+                document.getElementById('results').innerHTML = '<div class="empty-state"><p>أنت الآن تتصفح بيانات قديمة مؤقتاً.</p></div>';
+                document.getElementById('searchInput').value = '';
+            }
+        };
+    }
+
+    function exitArchiveMode() {
+        isArchiveMode = false;
+        document.getElementById('archiveBanner').style.display = 'none';
+        document.querySelector('.btn-upload').style.display = 'flex';
+        document.querySelector('.btn-archive').style.display = 'flex';
+        document.querySelector('.btn-view-archive').style.display = 'flex';
+        document.querySelector('.btn-clear').style.display = 'flex';
+        document.querySelector('.btn-export').style.gridColumn = 'auto';
+        document.getElementById('searchInput').value = '';
+        document.getElementById('results').innerHTML = '<div class="empty-state"><p>عدنا للنظام الحالي.</p></div>';
+        loadDataToMemory();
+    }
+
+    function processFile(input) {
+        const file = input.files[0];
+        if (!file) return;
+        showLoader(true);
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, {type: 'array'});
+            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+            const rows = XLSX.utils.sheet_to_json(firstSheet, {header: 1});
+            setTimeout(() => { smartMerge(rows); input.value = ''; }, 100);
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    function smartMerge(rows) {
+        if (rows.length < 1) { alert("الملف فارغ!"); showLoader(false); return; }
+        let idColIndex = -1; let maxValidIds = 0; const checkLimit = Math.min(rows.length, 200); let colCounts = {};
+        for (let r = 0; r < checkLimit; r++) {
+            const row = rows[r]; if (!row) continue;
+            for (let c = 0; c < row.length; c++) {
+                let cell = String(row[c]).trim();
+                if (/^\d{8,9}$/.test(cell)) { colCounts[c] = (colCounts[c] || 0) + 1; }
+            }
+        }
+        for (let c in colCounts) { if (colCounts[c] > maxValidIds) { maxValidIds = colCounts[c]; idColIndex = parseInt(c); } }
+        if (idColIndex === -1) { alert("لم يتم العثور على عمود الهوية! تأكد من صحة الملف."); showLoader(false); return; }
+
+        function looksLikePhone(str) {
+            if (!str) return false;
+            const cleaned = String(str).trim();
+            if (!/^[0-9+\-\s()]+$/.test(cleaned)) return false;
+            const digits = cleaned.replace(/[^\d]/g, '');
+            return digits.length >= 7 && digits.length <= 13;
+        }
+        function looksLikeName(str) {
+            if (!str) return false;
+            const cleaned = String(str).trim();
+            if (cleaned.length < 2 || cleaned.length > 45) return false;
+            if (/\d/.test(cleaned)) return false;
+            if (/[.:؛!؟\n]/.test(cleaned)) return false;
+            const wordCount = cleaned.split(/\s+/).filter(Boolean).length;
+            return wordCount >= 1 && wordCount <= 6;
+        }
+        function looksLikeCode(str) {
+            if (!str) return false;
+            const cleaned = String(str).trim();
+            if (cleaned.length < 1 || cleaned.length > 20) return false;
+            if (/[.:؛!؟\n]/.test(cleaned)) return false;
+            if (looksLikePhone(cleaned)) return false;
+            const wordCount = cleaned.split(/\s+/).filter(Boolean).length;
+            return wordCount >= 1 && wordCount <= 3;
+        }
+        function extractRowFields(row, idColIndex) {
+            const candidates = [];
+            for (let c = 0; c < row.length; c++) {
+                if (c === idColIndex) continue;
+                const raw = row[c];
+                if (raw === undefined || raw === null) continue;
+                const cell = String(raw).trim();
+                if (cell === '') continue;
+                candidates.push({ c, cell });
+            }
+
+            let phone = '';
+            const afterId = candidates.find(x => x.c === idColIndex + 1);
+            if (afterId && looksLikePhone(afterId.cell)) { phone = afterId.cell; }
+            else { const m = candidates.find(x => looksLikePhone(x.cell)); if (m) phone = m.cell; }
+
+            let name = '';
+            const beforeId = candidates.find(x => x.c === idColIndex - 1);
+            if (beforeId && looksLikeName(beforeId.cell) && beforeId.cell !== phone) { name = beforeId.cell; }
+            else if (afterId && looksLikeName(afterId.cell) && afterId.cell !== phone) { name = afterId.cell; }
+            else { const m = candidates.find(x => looksLikeName(x.cell) && x.cell !== phone); if (m) name = m.cell; }
+
+            let msg = ''; let longest = 0;
+            candidates.forEach(x => {
+                if (x.cell === name || x.cell === phone) return;
+                if (x.cell.length > longest && x.cell.length > 15) { longest = x.cell.length; msg = x.cell; }
+            });
+
+            // --- الامتداد الجديد: نفس منطق "الشكل قبل الموقع" مطبّق الآن على الموظف والكود، بدل الاعتماد الأعمى على الموقع الثابت فقط ---
+            const usedValues = new Set([name, phone, msg].filter(v => v !== ''));
+
+            let emp = '';
+            const empPos = candidates.find(x => x.c === idColIndex + 3);
+            if (empPos && looksLikeName(empPos.cell) && !usedValues.has(empPos.cell)) { emp = empPos.cell; }
+            else { const m = candidates.find(x => looksLikeName(x.cell) && !usedValues.has(x.cell)); if (m) emp = m.cell; }
+            if (emp) usedValues.add(emp);
+
+            let code = '';
+            const codePos = candidates.find(x => x.c === idColIndex + 4);
+            if (codePos && looksLikeCode(codePos.cell) && !usedValues.has(codePos.cell)) { code = codePos.cell; }
+            else { const m = candidates.find(x => looksLikeCode(x.cell) && !usedValues.has(x.cell)); if (m) code = m.cell; }
+
+            // شبكة أمان أخيرة: لو فشل الاستنتاج الذكي بالكامل، ارجع للموقع الثابت التقليدي بدل حقل فارغ
+            if (!emp && empPos) emp = empPos.cell;
+            if (!code && codePos) code = codePos.cell;
+
+            return { name, phone, msg, emp, code };
+        }
+
+        const tx = db.transaction([STORE_NAME], "readwrite");
+        const store = tx.objectStore(STORE_NAME);
+
+        let addedCount = 0; let updatedCount = 0; let refreshedCount = 0;
+
+        let currentMap = new Map();
+        memoryCache.forEach(item => {
+            if (!item.messages) { item.messages = [{ msg: item.msg, emp: item.emp, code: item.code, origNum: item.origNum }]; }
+            currentMap.set(item.id, item);
+        });
+
+        rows.forEach(row => {
+            if (!row) return;
+            let id = String(row[idColIndex] || "").trim();
+            if (/^\d{8}$/.test(id)) { id = "0" + id; }
+            if (!/^\d{9}$/.test(id)) return;
+
+            let seqNum = row[0]; let sortNum = parseInt(seqNum); if (isNaN(sortNum)) sortNum = 999999;
+            const fields = extractRowFields(row, idColIndex);
+            const { name, phone, msg, emp, code } = fields;
+
+            let existing = currentMap.get(id);
+            if (existing) {
+                const newSig = messageSignature(msg);
+                const matchIdx = existing.messages.findIndex(mm => messageSignature(mm.msg) === newSig);
+                if (matchIdx === -1) {
+                    existing.messages.push({ msg, emp, code, origNum: seqNum });
+                    if (!existing.phone && phone) existing.phone = phone;
+                    if (!existing.name && name) existing.name = name;
+                    store.put(existing);
+                    updatedCount++;
+                } else {
+                    existing.messages[matchIdx] = { msg, emp, code, origNum: seqNum };
+                    if (!existing.phone && phone) existing.phone = phone;
+                    if (!existing.name && name) existing.name = name;
+                    store.put(existing);
+                    refreshedCount++;
+                }
+            } else {
+                const person = { id: id, num: sortNum, origNum: seqNum, name: name, phone: phone, messages: [{ msg, emp, code, origNum: seqNum }] };
+                store.put(person);
+                currentMap.set(id, person);
+                addedCount++;
+            }
+        });
+
+        tx.oncomplete = () => { loadDataToMemory(); alert(`✅ تم الحفظ بنجاح!\n\n🔹 مستفيدين جدد: ${addedCount}\n🔸 رسائل/مواعيد جديدة أُضيفت: ${updatedCount}\n♻️ رسائل مطابقة تم تحديث بياناتها: ${refreshedCount}`); showLoader(false); };
+    }
+
+    function copyToClipboard(text, type) {
+        if (!text || text === '-') return;
+        let textArea = document.createElement("textarea"); textArea.value = text; textArea.style.position = "fixed"; textArea.style.left = "-9999px"; document.body.appendChild(textArea); textArea.focus(); textArea.select();
+        try { document.execCommand('copy'); showToastMsg(`تم نسخ ${type}: ${text}`); } catch (err) { showToastMsg("حدث خطأ أثناء النسخ"); }
+        document.body.removeChild(textArea);
+    }
+
+    function showToastMsg(msg) {
+        let toast = document.getElementById("toastMsg"); toast.innerText = msg; toast.className = "show";
+        setTimeout(function(){ toast.className = toast.className.replace("show", ""); }, 2500);
+    }
+
+    function extractAppointment(msg) {
+        if (!msg) return { date: "غير محدد", time: "غير محدد" };
+        const dateMatch = msg.match(/يوم\s+([^\s]+)\s+([\d\/]+)/);
+        const timeMatch = msg.match(/الساعة\s+([\d\:\-]+)/);
+        let extractedDate = "غير محدد";
+        let extractedTime = "غير محدد";
+        if (dateMatch) { extractedDate = `${dateMatch[1]} ${dateMatch[2]}`; }
+        if (timeMatch) { extractedTime = timeMatch[1]; }
+        return { date: extractedDate, time: extractedTime };
+    }
+
+    // --- توقيع الرسالة: يمنع تكرار نفس الموعد كسجل جديد حتى لو تغيّرت صياغة النص قليلاً بين رفعة وأخرى ---
+    function normalizeMsgText(str) {
+        return String(str || '').trim().replace(/\s+/g, ' ');
+    }
+    function messageSignature(msg) {
+        const appt = extractAppointment(msg);
+        if (appt.date !== 'غير محدد' || appt.time !== 'غير محدد') {
+            return 'APPT|' + appt.date + '|' + appt.time;
+        }
+        return 'TXT|' + normalizeMsgText(msg);
+    }
+
+    function toggleMessage(btn) {
+        const entry = btn.closest('.msg-entry');
+        const msgBox = entry ? entry.querySelector('.full-message-box') : null;
+        if (!msgBox) return;
+        const isHidden = msgBox.style.display === 'none' || msgBox.style.display === '';
+        msgBox.style.display = isHidden ? 'block' : 'none';
+        btn.innerHTML = isHidden ? '💬 إخفاء نص الرسالة ▴' : '💬 عرض النص كاملاً ▾';
+    }
+
+    function showAllMessages(btn) {
+        const card = btn.closest('.card');
+        if (!card) return;
+        const older = card.querySelectorAll('.msg-older');
+        const nowHidden = older.length > 0 && (older[0].style.display === 'none' || older[0].style.display === '');
+        older.forEach(el => { el.style.display = nowHidden ? 'block' : 'none'; });
+        const total = btn.dataset.total;
+        btn.innerHTML = nowHidden ? '📜 إخفاء الرسائل الأقدم ▴' : `📜 عرض جميع الرسائل (${total}) ▾`;
+    }
+
+    function doSearch(val) {
+        const container = document.getElementById('results');
+        container.innerHTML = '';
+        if (!val || val.length < 2) { container.innerHTML = '<div class="empty-state"><p>اكتب رقم الهوية للبحث...</p></div>'; return; }
+
+        const found = memoryCache.filter(item => item.id.startsWith(val)).slice(0, 50);
+        if (found.length === 0) { container.innerHTML = '<div class="empty-state"><p>لا توجد نتائج مطابقة</p></div>'; return; }
+
+        found.forEach(item => {
+            const msgs = (item.messages && item.messages.length > 0) ? item.messages : (item.msg !== undefined ? [{ msg: item.msg, emp: item.emp, code: item.code, origNum: item.origNum }] : []);
+            const nameLong = (item.name || '').length > 60;
+            const phoneOk = isLikelyPhone(item.phone);
+            const firstOrigNum = (msgs[0] && msgs[0].origNum) || item.origNum || '-';
+            const total = msgs.length;
+            const capCount = 3;
+
+            let messagesHtml = '';
+            msgs.forEach((m, idx) => {
+                const appt = extractAppointment(m.msg);
+                const isOlder = idx < total - capCount;
+                messagesHtml += `
+                    <div class="msg-entry${isOlder ? ' msg-older' : ''}"${isOlder ? ' style="display:none;"' : ''}>
+                        ${total > 1 ? `<div style="color: var(--primary); font-size: 0.85rem; font-weight: 800; margin-bottom: 8px;${idx > 0 ? ' border-top:2px dashed #E4E9E8; padding-top:12px; margin-top:12px;' : ''}">📨 الرسالة (${idx + 1})</div>` : ''}
+                        <div class="appointment-box" style="margin-top: 0;">
+                            <div class="appt-eyebrow">🎫 بطاقة موعد الاستلام</div>
+                            <div class="appt-row">
+                                <span class="appt-label">📅 تاريخ الاستلام:</span>
+                                <span class="appt-value">${escapeHtml(appt.date)}</span>
+                            </div>
+                            <div class="appt-row" style="margin-top: 5px;">
+                                <span class="appt-label">⏰ وقت الحضور:</span>
+                                <span class="appt-value">${escapeHtml(appt.time)}</span>
+                            </div>
+                        </div>
+                        <div class="msg-actions-row">
+                            <button class="msg-action-btn" data-action="toggle-msg">💬 عرض النص كاملاً ▾</button>
+                            <button class="msg-action-btn share" data-action="share-whatsapp" data-id="${escapeHtml(item.id)}" data-msg-index="${idx}">📲 مشاركة واتساب</button>
+                            ${!isArchiveMode ? `<button class="msg-action-btn danger" data-action="delete-message" data-id="${escapeHtml(item.id)}" data-msg-index="${idx}">🗑️ حذف الرسالة</button>` : ''}
+                        </div>
+                        <div class="full-message-box">${escapeHtml(m.msg) || 'لا يوجد نص رسالة مسجل.'}</div>
+                    </div>
+                `;
+            });
+
+            let messagesSectionHtml;
+            if (total > 0) {
+                const toggleAllHtml = total > capCount ? `<button class="toggle-msg-btn" data-action="show-all-messages" data-total="${total}">📜 عرض جميع الرسائل (${total}) ▾</button>` : '';
+                messagesSectionHtml = toggleAllHtml + messagesHtml;
+            } else {
+                messagesSectionHtml = `<div style="text-align:center; padding:14px; color:var(--text-light); font-size:0.85rem; margin-top:8px; border-top:1px dashed #E4E9E8;">لا توجد رسائل/مواعيد مسجلة لهذا المستفيد.</div>`;
+            }
+
+            const actionsRowHtml = !isArchiveMode ? `
+                <div class="card-actions-row">
+                    <button class="icon-action-btn" data-action="edit-beneficiary" data-id="${escapeHtml(item.id)}">✏️ تعديل</button>
+                    <button class="icon-action-btn danger" data-action="delete-beneficiary" data-id="${escapeHtml(item.id)}">🗑️ حذف المستفيد</button>
+                </div>
+            ` : '';
+
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.innerHTML = `
+                <div class="card-header">
+                    <div class="card-topline">
+                        <span class="card-serial">#${escapeHtml(String(firstOrigNum))}</span>
+                        <div class="card-id">
+                            <span>${escapeHtml(item.id)}</span>
+                            <button class="copy-btn" data-action="copy" data-value="${escapeHtml(item.id)}" data-label="الهوية">
+                                <svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="card-name">${escapeHtml(item.name) || 'بدون اسم مسجّل'}</div>
+                        ${nameLong ? `<button class="toggle-name" data-action="toggle-name">عرض المزيد ▾</button>` : ''}
+                    </div>
+                </div>
+                <div class="info-row">
+                    <span class="label">الجوال:</span>
+                    <span class="value phone">
+                        <span>${phoneOk ? escapeHtml(item.phone) : '-'}</span>
+                        ${phoneOk ? `<button class="copy-btn" data-action="copy" data-value="${escapeHtml(item.phone)}" data-label="رقم الجوال"><svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg></button>` : ''}
+                    </span>
+                </div>
+                ${actionsRowHtml}
+                ${messagesSectionHtml}
+            `;
+            container.appendChild(card);
+        });
+    }
+
+    document.getElementById('results').addEventListener('click', function(e) {
+        const btn = e.target.closest('[data-action]');
+        if (!btn) return;
+        const action = btn.dataset.action;
+        switch (action) {
+            case 'copy': copyToClipboard(btn.dataset.value, btn.dataset.label); break;
+            case 'toggle-name': toggleName(btn); break;
+            case 'toggle-msg': toggleMessage(btn); break;
+            case 'show-all-messages': showAllMessages(btn); break;
+            case 'edit-beneficiary': openEditModal(btn.dataset.id); break;
+            case 'delete-beneficiary': deleteBeneficiary(btn.dataset.id); break;
+            case 'delete-message': deleteMessage(btn.dataset.id, btn.dataset.msgIndex); break;
+            case 'share-whatsapp': shareAppointment(btn.dataset.id, btn.dataset.msgIndex); break;
+        }
+    });
+
+    function isLikelyPhone(v) {
+        if (!v) return false;
+        const cleaned = String(v).trim();
+        return cleaned.length >= 7 && cleaned.length <= 16 && /^[0-9+\-\s()]+$/.test(cleaned);
+    }
+
+    function toggleName(btn) {
+        const nameEl = btn.previousElementSibling;
+        const expanded = nameEl.classList.toggle('expanded');
+        btn.textContent = expanded ? 'عرض أقل ▴' : 'عرض المزيد ▾';
+    }
+
+    // --- تعديل/حذف مستفيد فردي ---
+    function openEditModal(id) {
+        const item = memoryCache.find(x => x.id === id);
+        if (!item) return;
+        document.getElementById('editIdHidden').value = id;
+        document.getElementById('editNameInput').value = item.name || '';
+        document.getElementById('editPhoneInput').value = item.phone || '';
+        document.getElementById('editModal').classList.add('show');
+    }
+    function closeEditModal() { document.getElementById('editModal').classList.remove('show'); }
+    function saveEditedBeneficiary() {
+        const id = document.getElementById('editIdHidden').value;
+        const item = memoryCache.find(x => x.id === id);
+        if (!item) return;
+        item.name = document.getElementById('editNameInput').value.trim();
+        item.phone = document.getElementById('editPhoneInput').value.trim();
+        const tx = db.transaction([STORE_NAME], 'readwrite');
+        tx.objectStore(STORE_NAME).put(item);
+        tx.oncomplete = () => { closeEditModal(); showToastMsg('✅ تم حفظ التعديلات'); doSearch(document.getElementById('searchInput').value); };
+        tx.onerror = () => { showToastMsg('❌ حدث خطأ أثناء الحفظ'); };
+    }
+
+    function deleteBeneficiary(id) {
+        const item = memoryCache.find(x => x.id === id);
+        if (!item) return;
+        if (!confirm(`⚠️ هل أنت متأكد من حذف المستفيد صاحب الهوية ${id} نهائياً؟ سيُحذف مع كل رسائله ولن يمكن التراجع.`)) return;
+        const tx = db.transaction([STORE_NAME], 'readwrite');
+        tx.objectStore(STORE_NAME).delete(id);
+        tx.oncomplete = () => {
+            memoryCache = memoryCache.filter(x => x.id !== id);
+            updateStats();
+            showToastMsg('🗑️ تم حذف المستفيد');
+            doSearch(document.getElementById('searchInput').value);
+        };
+    }
+
+    function deleteMessage(id, msgIndexStr) {
+        const item = memoryCache.find(x => x.id === id);
+        if (!item || !item.messages) return;
+        const msgIndex = parseInt(msgIndexStr, 10);
+        if (isNaN(msgIndex) || msgIndex < 0 || msgIndex >= item.messages.length) return;
+        const warnLast = item.messages.length <= 1;
+        const confirmText = warnLast
+            ? '⚠️ هذه آخر رسالة/موعد مسجل لهذا المستفيد. حذفها سيجعل سجله بلا أي رسائل. هل تريد المتابعة؟'
+            : 'هل تريد حذف هذه الرسالة/الموعد من سجل هذا المستفيد؟';
+        if (!confirm(confirmText)) return;
+        item.messages.splice(msgIndex, 1);
+        const tx = db.transaction([STORE_NAME], 'readwrite');
+        tx.objectStore(STORE_NAME).put(item);
+        tx.oncomplete = () => { showToastMsg('🗑️ تم حذف الرسالة'); doSearch(document.getElementById('searchInput').value); };
+        tx.onerror = () => { showToastMsg('❌ حدث خطأ أثناء الحذف'); };
+    }
+
+    async function shareAppointment(id, msgIndexStr) {
+        const item = memoryCache.find(x => x.id === id);
+        if (!item) return;
+        const msgIndex = parseInt(msgIndexStr, 10);
+        const msgs = item.messages || [];
+        const m = msgs[msgIndex];
+        if (!m) return;
+        const appt = extractAppointment(m.msg);
+        const text = `عزيزي/عزيزتي ${item.name || ''}
+نود تذكيركم بموعد استلام المساعدة:
+📅 التاريخ: ${appt.date}
+⏰ الوقت: ${appt.time}`;
+        if (navigator.share) {
+            try { await navigator.share({ text: text }); } catch (e) { /* أُغلقت نافذة المشاركة من المستخدم */ }
+        } else {
+            window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+        }
+    }
+
+    // --- نسخة احتياطية كاملة (البيانات النشطة + كل الأرشيف) واستيرادها ---
+    async function exportFullBackup() {
+        showLoader(true);
+        try {
+            const archives = await new Promise((resolve) => {
+                const tx = archiveDb.transaction(['archives'], 'readonly');
+                const req = tx.objectStore('archives').getAll();
+                req.onsuccess = () => resolve(req.result || []);
+                req.onerror = () => resolve([]);
+            });
+            const backup = {
+                appName: 'نظام إدارة المستفيدين',
+                backupVersion: 1,
+                appVersion: APP_VERSION,
+                exportedAt: new Date().toISOString(),
+                activeData: memoryCache,
+                archives: archives
+            };
+            const json = JSON.stringify(backup);
+            const blob = new Blob([json], { type: 'application/json' });
+            const now = new Date();
+            const dateStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+            const fileName = `نسخة_احتياطية_كاملة_${dateStr}.json`;
+            const fileToShare = new File([blob], fileName, { type: blob.type });
+            if (navigator.canShare && navigator.canShare({ files: [fileToShare] })) {
+                try { await navigator.share({ files: [fileToShare], title: 'نسخة احتياطية' }); }
+                catch (e) { /* أُغلقت نافذة المشاركة */ }
+            } else {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url; a.download = fileName; document.body.appendChild(a); a.click();
+                document.body.removeChild(a); URL.revokeObjectURL(url);
+            }
+            showToastMsg('✅ تم تجهيز النسخة الاحتياطية');
+        } catch (e) {
+            alert('❌ حدث خطأ أثناء إعداد النسخة الاحتياطية.');
+        }
+        showLoader(false);
+    }
+
+    function importFullBackup(file) {
+        if (!confirm('⚠️ استيراد نسخة احتياطية سيُضيف/يُحدّث البيانات الحالية والأرشيف بمحتوى الملف المستورد، ولن يحذف أي بيانات قائمة. هل تريد المتابعة؟')) {
+            document.getElementById('backupFileInput').value = '';
+            return;
+        }
+        showLoader(true);
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const backup = JSON.parse(e.target.result);
+                if (!backup || !Array.isArray(backup.activeData) || !Array.isArray(backup.archives)) {
+                    throw new Error('صيغة الملف غير صالحة');
+                }
+                const tx = db.transaction([STORE_NAME], 'readwrite');
+                const store = tx.objectStore(STORE_NAME);
+                backup.activeData.forEach(item => store.put(item));
+                tx.oncomplete = () => {
+                    const atx = archiveDb.transaction(['archives'], 'readwrite');
+                    const astore = atx.objectStore('archives');
+                    backup.archives.forEach(arc => astore.put(arc));
+                    atx.oncomplete = () => {
+                        loadDataToMemory();
+                        showLoader(false);
+                        showToastMsg('✅ تم استيراد النسخة الاحتياطية بنجاح');
+                        document.getElementById('backupFileInput').value = '';
+                    };
+                };
+            } catch (err) {
+                showLoader(false);
+                alert('❌ ملف النسخة الاحتياطية غير صالح أو تالف.');
+                document.getElementById('backupFileInput').value = '';
+            }
+        };
+        reader.readAsText(file);
+    }
+
+    function openSettingsModal() { document.getElementById('settingsModal').classList.add('show'); }
+    function closeSettingsModal() { document.getElementById('settingsModal').classList.remove('show'); }
+    function onDarkModeToggleChange(checkbox) {
+        applyDarkMode(checkbox.checked);
+        setSetting('darkMode', checkbox.checked);
+    }
+
+    async function exportData() {
+        if (memoryCache.length === 0) { alert("لا توجد بيانات لتصديرها!"); return; }
+        showLoader(true); let log = document.getElementById('logArea'); log.style.display = 'block'; log.style.background = '#e1f5fe'; log.style.color = '#0288d1'; log.innerHTML = '⏳ جاري تجهيز وضغط الكشف...';
+
+        try {
+            setTimeout(async () => {
+                let dataToSort = [...memoryCache];
+                dataToSort.sort((a, b) => (a.num || 0) - (b.num || 0));
+
+                const exportArray = [];
+                dataToSort.forEach(item => {
+                    const msgs = item.messages || [{ msg: item.msg, emp: item.emp, code: item.code, origNum: item.origNum }];
+                    msgs.forEach(m => {
+                        exportArray.push([
+                            m.origNum || item.origNum || "",
+                            (item.name || "").trim(),
+                            (item.id || "").trim(),
+                            (item.phone || "").trim(),
+                            (m.msg || "").trim(),
+                            (m.emp || "").trim(),
+                            (m.code || "").trim()
+                        ]);
+                    });
+                });
+
+                const headerRow = ["رقم", "عزيزي المستفيد/ة", "هوية رقم", "رقم الجوال", "محتوي رسالة", "موظف", "كود رقم"];
+                const finalData = [headerRow, ...exportArray];
+
+                const ws = XLSX.utils.aoa_to_sheet(finalData); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "المستفيدين");
+
+                const now = new Date(); const dateStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`; const timeStr = `${now.getHours()}-${now.getMinutes()}-${now.getSeconds()}`;
+                let prefixName = isArchiveMode ? `أرشيف_${document.getElementById('archiveNameDisplay').innerText}` : 'كشف_المستفيدين';
+                prefixName = prefixName.replace(/\s+/g, '_');
+                const fileName = `${prefixName}_${dateStr}_${timeStr}.xlsx`;
+
+                const wbout = XLSX.write(wb, {bookType:'xlsx', type: 'array', compression: true});
+                const blob = new Blob([wbout], {type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+                const fileToShare = new File([blob], fileName, {type: blob.type});
+
+                if (navigator.canShare && navigator.canShare({ files: [fileToShare] })) {
+                    log.innerHTML = '✅ تم التجهيز! اختر التطبيق للمشاركة...';
+                    try { await navigator.share({ files: [fileToShare], title: 'كشف المستفيدين', text: `مرفق الكشف` }); log.style.background = '#e8f5e9'; log.style.color = '#2e7d32'; log.innerHTML = '✅ تمت المشاركة بنجاح!'; } catch (err) { log.innerHTML = 'ℹ️ تم إغلاق نافذة المشاركة.'; }
+                } else {
+                    log.innerHTML = '📥 جاري التنزيل لملفاتك...'; XLSX.writeFile(wb, fileName, { compression: true }); log.style.background = '#e8f5e9'; log.style.color = '#2e7d32'; log.innerHTML = '✅ تم الحفظ بنجاح!';
+                }
+
+                showLoader(false); setTimeout(() => { log.style.display = 'none'; }, 4000);
+            }, 100);
+        } catch (error) { log.innerHTML = '❌ حدث خطأ أثناء التصدير.'; showLoader(false); }
+    }
+
+    function updateStats() {
+        if(isArchiveMode) { document.getElementById('stats').innerText = `عدد المستفيدين في الأرشيف: ${memoryCache.length}`; }
+        else { document.getElementById('stats').innerText = `إجمالي المستفيدين النشطين: ${memoryCache.length}`; }
+    }
+
+    function clearData() {
+        if(confirm("⚠️ تحذير نهائي: تصفير النظام سيمسح البيانات الحالية للأبد ولن تُنقل للأرشيف! هل ترغب في الاستمرار؟")) {
+            const tx = db.transaction([STORE_NAME], "readwrite");
+            tx.objectStore(STORE_NAME).clear();
+            tx.oncomplete = () => { memoryCache = []; updateStats(); document.getElementById('results').innerHTML = '<div class="empty-state"><p>تم تصفير النظام.</p></div>'; };
+        }
+    }
+
+    function showLoader(show) { document.getElementById('loader').style.display = show ? 'block' : 'none'; }
+</script>
+
+</body>
+</html>
