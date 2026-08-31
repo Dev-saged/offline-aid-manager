@@ -2,7 +2,8 @@
 // ثم يقدّمها من الذاكرة المؤقتة في كل مرة لاحقة، بحيث يعمل النظام بالكامل بدون إنترنت.
 // تم ترقية CACHE_NAME إلى v5.2.0 حتى يُجبر المتصفح على استبدال index.html المخزّن مسبقًا بالنسخة الجديدة.
 
-const CACHE_NAME = 'beneficiary-app-v5.2.0';
+const CACHE_NAME = 'beneficiary-app-v6.1.0';
+
 
 const CORE_ASSETS = [
   './',
